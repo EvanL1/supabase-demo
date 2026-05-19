@@ -30,14 +30,16 @@ export default async function Page({
 }) {
   const { error } = await searchParams;
   const supabase = createClient(await cookies());
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: tasks } = await supabase
-    .from("tasks")
-    .select("*")
-    .order("status", { ascending: true })
-    .order("priority", { ascending: false })
-    .order("due_at", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false });
+  const [{ data: { user } }, { data: tasks }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("tasks")
+      .select("*")
+      .order("status", { ascending: true })
+      .order("priority", { ascending: false })
+      .order("due_at", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false }),
+  ]);
 
   const list = (tasks ?? []) as Task[];
   const pending = list.filter((t) => t.status === "pending");

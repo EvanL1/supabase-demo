@@ -21,16 +21,12 @@ export async function createTask(formData: FormData) {
   const dueRaw = String(formData.get("due_at") ?? "").trim();
   const due_at = dueRaw ? new Date(dueRaw).toISOString() : null;
 
+  // user_id is filled by the DB default `auth.uid()`; proxy middleware
+  // already guarantees the user is signed in, so no extra getUser() needed.
   const supabase = await client();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { error } = await supabase.from("tasks").insert({
-    user_id: user.id,
-    title,
-    priority,
-    due_at,
-  });
+  const { error } = await supabase
+    .from("tasks")
+    .insert({ title, priority, due_at });
   if (error) fail(`添加失败：${error.message}`);
 
   revalidatePath("/");
