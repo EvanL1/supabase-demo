@@ -21,7 +21,14 @@ const PRIORITY_LABEL: Record<number, string> = {
   3: "高",
 };
 
-export default async function Page() {
+type SearchParams = Promise<{ error?: string }>;
+
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const { error } = await searchParams;
   const supabase = createClient(await cookies());
   const { data: { user } } = await supabase.auth.getUser();
   const { data: tasks } = await supabase
@@ -56,6 +63,12 @@ export default async function Page() {
       </header>
 
       <section className="mx-auto max-w-2xl px-6 py-8 space-y-8">
+        {error && (
+          <div className="rounded-xl border border-red-400/50 bg-red-50 dark:bg-red-950/30 p-3 text-sm text-red-700 dark:text-red-300">
+            {error}
+          </div>
+        )}
+
         <form
           action={createTask}
           className="space-y-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5"

@@ -2,10 +2,15 @@
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 
 async function client() {
   return createClient(await cookies());
+}
+
+function fail(message: string): never {
+  redirect(`/?error=${encodeURIComponent(message)}`);
 }
 
 export async function createTask(formData: FormData) {
@@ -18,14 +23,15 @@ export async function createTask(formData: FormData) {
 
   const supabase = await client();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) redirect("/login");
 
-  await supabase.from("tasks").insert({
+  const { error } = await supabase.from("tasks").insert({
     user_id: user.id,
     title,
     priority,
     due_at,
   });
+  if (error) fail(`添加失败：${error.message}`);
 
   revalidatePath("/");
 }
@@ -36,7 +42,12 @@ export async function toggleTask(formData: FormData) {
   if (!id || !["pending", "done"].includes(nextStatus)) return;
 
   const supabase = await client();
-  await supabase.from("tasks").update({ status: nextStatus }).eq("id", id);
+  const { error } = await supabase
+    .from("tasks")
+    .update({ status: nextStatus, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) fail(`更新失败：${error.message}`);
+
   revalidatePath("/");
 }
 
@@ -45,6 +56,8 @@ export async function deleteTask(formData: FormData) {
   if (!id) return;
 
   const supabase = await client();
-  await supabase.from("tasks").delete().eq("id", id);
+  const { error } = await supabase.from("tasks").delete().eq("id", id);
+  if (error) fail(`删除失败：${error.message}`);
+
   revalidatePath("/");
 }

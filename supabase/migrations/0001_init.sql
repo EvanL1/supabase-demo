@@ -1,6 +1,10 @@
 -- ============================================================================
 -- AI-native Task management — initial schema
 -- Run in Supabase Dashboard → SQL Editor, or via `supabase db push`.
+--
+-- NOTE: Kept as pure DDL (no plpgsql trigger functions) because some hosted
+-- SQL editors mishandle dollar-quoted function bodies inside multi-statement
+-- scripts. `updated_at` is bumped from the application layer instead.
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
@@ -23,38 +27,21 @@ create table if not exists public.tasks (
 create index if not exists tasks_user_status_idx
   on public.tasks (user_id, status, due_at nulls last);
 
--- bump updated_at automatically
-create or replace function public.touch_updated_at()
-returns trigger language plpgsql as $$
-begin
-  new.updated_at = now();
-  return new;
-end $$;
-
-drop trigger if exists tasks_touch_updated_at on public.tasks;
-create trigger tasks_touch_updated_at
-  before update on public.tasks
-  for each row execute function public.touch_updated_at();
-
 alter table public.tasks enable row level security;
 
-drop policy if exists tasks_select_own on public.tasks;
 create policy tasks_select_own on public.tasks
   for select to authenticated
   using (auth.uid() = user_id);
 
-drop policy if exists tasks_insert_own on public.tasks;
 create policy tasks_insert_own on public.tasks
   for insert to authenticated
   with check (auth.uid() = user_id);
 
-drop policy if exists tasks_update_own on public.tasks;
 create policy tasks_update_own on public.tasks
   for update to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
-drop policy if exists tasks_delete_own on public.tasks;
 create policy tasks_delete_own on public.tasks
   for delete to authenticated
   using (auth.uid() = user_id);
@@ -76,17 +63,14 @@ create index if not exists api_tokens_user_idx on public.api_tokens (user_id);
 
 alter table public.api_tokens enable row level security;
 
-drop policy if exists api_tokens_select_own on public.api_tokens;
 create policy api_tokens_select_own on public.api_tokens
   for select to authenticated
   using (auth.uid() = user_id);
 
-drop policy if exists api_tokens_insert_own on public.api_tokens;
 create policy api_tokens_insert_own on public.api_tokens
   for insert to authenticated
   with check (auth.uid() = user_id);
 
-drop policy if exists api_tokens_delete_own on public.api_tokens;
 create policy api_tokens_delete_own on public.api_tokens
   for delete to authenticated
   using (auth.uid() = user_id);
